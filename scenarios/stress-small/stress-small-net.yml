@@ -1,0 +1,56 @@
+---
+# Small Network stress test scenario
+# Usage: kube-burner init -c scenarios/stress-small/stress-small-net.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-stress-small-net
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: stress-small-net
+    jobIterations: 6
+    qps: 12
+    burst: 12
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: stress-small-net
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Network stress client pods
+      - objectTemplate: templates/stress-small/stress-small-net-client-deployment.yml
+        replicas: 2
+        inputVars:
+          targetPort: "8080"
+          connections: "10"
+          duration: "300s"
+
+      # Network stress server pods
+      - objectTemplate: templates/stress-small/stress-small-net-server-deployment.yml
+        replicas: 2
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-small/stress-small-net-service.yml
+        replicas: 2
+
+      # Network policies
+      - objectTemplate: templates/stress-small/stress-small-network-policy.yml
+        replicas: 1
+
+      # ConfigMaps and secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 6
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 6

@@ -1,0 +1,65 @@
+---
+# Medium I/O stress test scenario (reduced load)
+# Usage: kube-burner init -c stress-scenarios/medium-io.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-medium-io
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: medium-io-stress
+    jobIterations: 10
+    qps: 15
+    burst: 15
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: medium-io-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Medium I/O stress deployments with disk writes
+      - objectTemplate: templates/stress-medium/stress-medium-io-deployment.yml
+        replicas: 3
+        inputVars:
+          ioType: "disk-write"
+          ioSize: "512M"
+          ioWorkers: "2"
+          storageSize: "1Gi"
+
+      # Medium I/O stress deployments with disk reads
+      - objectTemplate: templates/stress-medium/stress-medium-io-deployment.yml
+        replicas: 3
+        inputVars:
+          ioType: "disk-read"
+          ioSize: "512M"
+          ioWorkers: "2"
+          storageSize: "1Gi"
+
+      # Mixed I/O operations (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-io-deployment.yml
+        replicas: 4
+        inputVars:
+          ioType: "mixed"
+          ioSize: "256M"
+          ioWorkers: "1"
+          storageSize: "512Mi"
+
+      # PersistentVolumeClaims for I/O testing (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-io-pvc.yml
+        replicas: 10
+
+      # ConfigMaps and secrets (reduced)
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 18
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 18

@@ -1,0 +1,53 @@
+---
+# Configuration for intensive load test
+# Usage: kube-burner init -c cluster-density-heavy.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-heavy
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: cluster-density-heavy
+    jobIterations: 25      # Increased for higher load
+    qps: 30               # More requests per second
+    burst: 30             # Higher bursts
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: cluster-density-heavy
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Deployments with 2 pods
+      - objectTemplate: templates/basic/basic-deployment-2pod.yml
+        replicas: 3       # More replicas
+        inputVars:
+          envVar: "test-data-for-performance-testing-with-extended-payload-to-simulate-real-world-applications-with-configuration-data-and-environment-variables-that-consume-memory-and-cpu-resources"
+
+      # Deployments with 1 pod
+      - objectTemplate: templates/basic/basic-deployment-1pod.yml
+        replicas: 5       # More small deployments
+        inputVars:
+          envVar: "additional-test-data-for-single-pod-deployments"
+
+      # Services for deployments
+      - objectTemplate: templates/basic/basic-service-2pod.yml
+        replicas: 3
+
+      - objectTemplate: templates/basic/basic-service-1pod.yml
+        replicas: 5
+
+      # Secrets and ConfigMaps (increased)
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 20      # Doubled for higher load
+
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 20      # Doubled for higher load

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stress-io-pvc-{{.Iteration}}-{{.Replica}}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "{{.storageSize}}"
+  storageClassName: ""  # Use default storage class

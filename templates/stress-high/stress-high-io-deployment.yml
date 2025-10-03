@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-io-{{.ioType}}-{{.Iteration}}-{{.Replica}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress-io-{{.ioType}}-{{.Iteration}}-{{.Replica}}
+  template:
+    metadata:
+      labels:
+        app: stress-io-{{.ioType}}-{{.Iteration}}-{{.Replica}}
+        stress-type: io
+        io-type: "{{.ioType}}"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: stress-io
+        image: quay.io/jparrill/kube-burner-stress-tools:latest
+        command: ["/bin/bash"]
+        args:
+          - -c
+          - |
+            case "{{.ioType}}" in
+              "disk-write")
+                stress-ng --hdd {{.ioWorkers}} --hdd-bytes {{.ioSize}} --timeout 600s
+                ;;
+              "disk-read")
+                # Create test files first, then read them repeatedly
+                mkdir -p /tmp/stress-test
+                for i in $(seq 1 {{.ioWorkers}}); do
+                  dd if=/dev/zero of=/tmp/stress-test/testfile$i bs=1M count=256 2>/dev/null &
+                done
+                wait
+                while true; do
+                  for i in $(seq 1 {{.ioWorkers}}); do
+                    dd if=/tmp/stress-test/testfile$i of=/dev/null bs=1M 2>/dev/null &
+                  done
+                  sleep 1
+                done
+                ;;
+              "mixed")
+                stress-ng --hdd {{.ioWorkers}} --hdd-bytes {{.ioSize}} --io {{.ioWorkers}} --timeout 600s
+                ;;
+            esac
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: stress-storage
+          mountPath: /tmp/stress-test
+      volumes:
+      - name: stress-storage
+        persistentVolumeClaim:
+          claimName: stress-io-pvc-{{.Iteration}}-{{.Replica}}

@@ -1,0 +1,56 @@
+---
+# Medium Network stress test scenario (reduced load)
+# Usage: kube-burner init -c stress-scenarios/medium-net.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-medium-net
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: medium-net-stress
+    jobIterations: 12
+    qps: 18
+    burst: 18
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: medium-net-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Network stress client pods (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-net-client-deployment.yml
+        replicas: 5
+        inputVars:
+          targetPort: "8080"
+          connections: "25"
+          duration: "600s"
+
+      # Network stress server pods (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-net-server-deployment.yml
+        replicas: 4
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-medium/stress-medium-net-service.yml
+        replicas: 4
+
+      # Network policies for testing (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-network-policy.yml
+        replicas: 3
+
+      # ConfigMaps and secrets (reduced)
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 12
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 12

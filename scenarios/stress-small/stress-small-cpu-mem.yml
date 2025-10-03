@@ -1,0 +1,56 @@
+---
+# Small CPU and Memory stress test scenario
+# Usage: kube-burner init -c scenarios/stress-small/stress-small-cpu-mem.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-stress-small-cpu-mem
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: stress-small-cpu-mem
+    jobIterations: 5
+    qps: 10
+    burst: 10
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: stress-small-cpu-mem
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Light CPU/Memory stress deployments
+      - objectTemplate: templates/stress-small/stress-small-cpu-mem-deployment.yml
+        replicas: 2
+        inputVars:
+          deploymentType: "light"
+          cpuRequest: "100m"
+          cpuLimit: "200m"
+          memoryRequest: "64Mi"
+          memoryLimit: "128Mi"
+          stressArgs: "--cpu 1 --vm 1 --vm-bytes 32M --timeout 300s"
+
+      # Minimal CPU/Memory stress deployments
+      - objectTemplate: templates/stress-small/stress-small-cpu-mem-deployment.yml
+        replicas: 3
+        inputVars:
+          deploymentType: "minimal"
+          cpuRequest: "50m"
+          cpuLimit: "100m"
+          memoryRequest: "32Mi"
+          memoryLimit: "64Mi"
+          stressArgs: "--cpu 1 --vm 1 --vm-bytes 16M --timeout 300s"
+
+      # ConfigMaps and secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 8
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 8

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-1pod-{{.Iteration}}-{{.Replica}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deployment-1pod-{{.Iteration}}-{{.Replica}}
+  template:
+    metadata:
+      labels:
+        app: deployment-1pod-{{.Iteration}}-{{.Replica}}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: app
+        image: registry.k8s.io/pause:3.1
+        ports:
+        - containerPort: 8080
+        env:
+        - name: TEST_DATA
+          value: "{{.envVar}}"
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault

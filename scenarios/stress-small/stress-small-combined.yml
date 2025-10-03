@@ -1,0 +1,67 @@
+---
+# Small Combined CPU, Memory, Network and I/O stress test scenario
+# Usage: kube-burner init -c scenarios/stress-small/stress-small-combined.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-stress-small-combined
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: stress-small-combined
+    jobIterations: 4
+    qps: 8
+    burst: 8
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: stress-small-combined
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Combined CPU+Memory+I/O stress deployments
+      - objectTemplate: templates/stress-small/stress-small-combined-deployment.yml
+        replicas: 1
+        inputVars:
+          cpuRequest: "100m"
+          cpuLimit: "200m"
+          memoryRequest: "128Mi"
+          memoryLimit: "256Mi"
+          ioWorkers: "1"
+          ioSize: "64M"
+          storageSize: "256Mi"
+
+      # Network stress components
+      - objectTemplate: templates/stress-small/stress-small-net-client-deployment.yml
+        replicas: 1
+        inputVars:
+          targetPort: "8080"
+          connections: "5"
+          duration: "300s"
+
+      - objectTemplate: templates/stress-small/stress-small-net-server-deployment.yml
+        replicas: 1
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-small/stress-small-net-service.yml
+        replicas: 1
+
+      # PersistentVolumeClaims
+      - objectTemplate: templates/stress-small/stress-small-io-pvc.yml
+        replicas: 2
+
+      # ConfigMaps and Secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 8
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 8

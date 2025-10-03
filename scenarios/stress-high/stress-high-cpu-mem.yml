@@ -1,0 +1,60 @@
+---
+# Heavy CPU and Memory stress test scenario
+# Usage: kube-burner init -c stress-scenarios/heavy-cpu-mem.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-heavy-cpu-mem
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: heavy-cpu-mem-stress
+    jobIterations: 15
+    qps: 20
+    burst: 20
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: heavy-cpu-mem-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # High CPU/Memory stress deployments
+      - objectTemplate: templates/stress-high/stress-high-cpu-mem-deployment.yml
+        replicas: 8
+        inputVars:
+          deploymentType: "high"
+          cpuRequest: "500m"
+          cpuLimit: "1000m"
+          memoryRequest: "512Mi"
+          memoryLimit: "1Gi"
+          stressArgs: "--cpu 2 --vm 2 --vm-bytes 256M --timeout 600s"
+
+      # Medium CPU/Memory stress deployments
+      - objectTemplate: templates/stress-high/stress-high-cpu-mem-deployment.yml
+        replicas: 12
+        inputVars:
+          deploymentType: "medium"
+          cpuRequest: "200m"
+          cpuLimit: "500m"
+          memoryRequest: "256Mi"
+          memoryLimit: "512Mi"
+          stressArgs: "--cpu 1 --vm 1 --vm-bytes 128M --timeout 600s"
+
+      # Note: No services needed for CPU/Memory stress testing
+      # Services removed to avoid conflicts
+
+      # ConfigMaps with heavy data
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 30
+
+      # Secrets
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 30

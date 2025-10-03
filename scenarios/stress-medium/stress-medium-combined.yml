@@ -1,0 +1,80 @@
+---
+# Medium Combined CPU, Memory, Network and I/O stress test scenario (reduced load)
+# Usage: kube-burner init -c stress-scenarios/medium-combined.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-medium-combined
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: medium-combined-stress
+    jobIterations: 8
+    qps: 12
+    burst: 12
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: medium-combined-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Combined CPU+Memory+I/O stress deployments (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-combined-deployment.yml
+        replicas: 2
+        inputVars:
+          cpuRequest: "200m"
+          cpuLimit: "400m"
+          memoryRequest: "256Mi"
+          memoryLimit: "512Mi"
+          ioWorkers: "1"
+          ioSize: "128M"
+          storageSize: "512Mi"
+
+      # Network stress components (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-net-client-deployment.yml
+        replicas: 3
+        inputVars:
+          targetPort: "8080"
+          connections: "15"
+          duration: "600s"
+
+      - objectTemplate: templates/stress-medium/stress-medium-net-server-deployment.yml
+        replicas: 2
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-medium/stress-medium-net-service.yml
+        replicas: 2
+
+      # Additional I/O stress deployments (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-io-deployment.yml
+        replicas: 2
+        inputVars:
+          ioType: "mixed"
+          ioSize: "256M"
+          ioWorkers: "1"
+          storageSize: "512Mi"
+
+      # PersistentVolumeClaims (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-io-pvc.yml
+        replicas: 6
+
+      # Network policies (reduced)
+      - objectTemplate: templates/stress-medium/stress-medium-network-policy.yml
+        replicas: 2
+
+      # ConfigMaps and Secrets (reduced)
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 20
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 20

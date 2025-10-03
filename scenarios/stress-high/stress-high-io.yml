@@ -1,0 +1,65 @@
+---
+# Heavy I/O stress test scenario
+# Usage: kube-burner init -c stress-scenarios/heavy-io.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-heavy-io
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: heavy-io-stress
+    jobIterations: 18
+    qps: 22
+    burst: 22
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: heavy-io-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # High I/O stress deployments with disk writes
+      - objectTemplate: templates/stress-high/stress-high-io-deployment.yml
+        replicas: 6
+        inputVars:
+          ioType: "disk-write"
+          ioSize: "1G"
+          ioWorkers: "4"
+          storageSize: "2Gi"
+
+      # High I/O stress deployments with disk reads
+      - objectTemplate: templates/stress-high/stress-high-io-deployment.yml
+        replicas: 6
+        inputVars:
+          ioType: "disk-read"
+          ioSize: "1G"
+          ioWorkers: "4"
+          storageSize: "2Gi"
+
+      # Mixed I/O operations
+      - objectTemplate: templates/stress-high/stress-high-io-deployment.yml
+        replicas: 8
+        inputVars:
+          ioType: "mixed"
+          ioSize: "512M"
+          ioWorkers: "2"
+          storageSize: "1Gi"
+
+      # PersistentVolumeClaims for I/O testing
+      - objectTemplate: templates/stress-high/stress-high-io-pvc.yml
+        replicas: 20
+
+      # ConfigMaps and secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 35
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 35

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-net-client-{{.Iteration}}-{{.Replica}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stress-net-client-{{.Iteration}}-{{.Replica}}
+  template:
+    metadata:
+      labels:
+        app: stress-net-client-{{.Iteration}}-{{.Replica}}
+        stress-type: network-client
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: stress-net-client
+        image: quay.io/jparrill/kube-burner-stress-tools:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            while true; do
+              for i in $(seq 1 {{.connections}}); do
+                curl -s -o /dev/null stress-net-service-{{.Iteration}}.heavy-net-stress.svc.cluster.local:{{.targetPort}} &
+              done
+              sleep 1
+            done
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault

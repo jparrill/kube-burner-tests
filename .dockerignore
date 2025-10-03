@@ -1,0 +1,31 @@
+# Ignore unnecessary files for Docker build context
+.git/
+.gitignore
+*.md
+*.log
+.DS_Store
+Thumbs.db
+
+# Ignore kube-burner output directories
+kube-burner-*
+
+# Ignore temporary files
+*.tmp
+*.temp
+.cache/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test outputs
+test-results/
+reports/
+
+# Keep necessary files for container builds
+!Dockerfile*
+!templates/
+!stress-scenarios/
+!build-images.sh

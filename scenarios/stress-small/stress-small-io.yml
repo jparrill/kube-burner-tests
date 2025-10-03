@@ -1,0 +1,56 @@
+---
+# Small I/O stress test scenario
+# Usage: kube-burner init -c scenarios/stress-small/stress-small-io.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-stress-small-io
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: stress-small-io
+    jobIterations: 5
+    qps: 10
+    burst: 10
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: stress-small-io
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Small I/O stress deployments with disk writes
+      - objectTemplate: templates/stress-small/stress-small-io-deployment.yml
+        replicas: 2
+        inputVars:
+          ioType: "disk-write"
+          ioSize: "128M"
+          ioWorkers: "1"
+          storageSize: "256Mi"
+
+      # Small I/O stress deployments with mixed operations
+      - objectTemplate: templates/stress-small/stress-small-io-deployment.yml
+        replicas: 2
+        inputVars:
+          ioType: "mixed"
+          ioSize: "64M"
+          ioWorkers: "1"
+          storageSize: "256Mi"
+
+      # PersistentVolumeClaims for I/O testing
+      - objectTemplate: templates/stress-small/stress-small-io-pvc.yml
+        replicas: 4
+
+      # ConfigMaps and secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 8
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 8

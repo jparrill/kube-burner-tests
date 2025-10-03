@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-combined-{{.Iteration}}-{{.Replica}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress-combined-{{.Iteration}}-{{.Replica}}
+  template:
+    metadata:
+      labels:
+        app: stress-combined-{{.Iteration}}-{{.Replica}}
+        stress-type: combined
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: stress-cpu-mem
+        image: quay.io/jparrill/kube-burner-stress-tools:latest
+        command: ["/bin/bash"]
+        args:
+          - -c
+          - |
+            # Combined CPU, memory and I/O stress
+            stress-ng --cpu 2 --vm 2 --vm-bytes 256M --hdd {{.ioWorkers}} --hdd-bytes {{.ioSize}} --timeout 600s &
+            STRESS_PID=$!
+
+            # Keep the container running
+            wait $STRESS_PID
+        resources:
+          requests:
+            memory: "{{.memoryRequest}}"
+            cpu: "{{.cpuRequest}}"
+          limits:
+            memory: "{{.memoryLimit}}"
+            cpu: "{{.cpuLimit}}"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: stress-storage
+          mountPath: /tmp/stress-test
+      - name: network-client
+        image: quay.io/jparrill/kube-burner-stress-tools:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            while true; do
+              for i in $(seq 1 10); do
+                curl -s -o /dev/null http://httpbin.org/get &
+                curl -s -o /dev/null stress-net-service-{{.Iteration}}.heavy-combined-stress.svc.cluster.local:8080 &
+              done
+              sleep 2
+            done
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: stress-storage
+        persistentVolumeClaim:
+          claimName: stress-io-pvc-{{.Iteration}}-{{.Replica}}

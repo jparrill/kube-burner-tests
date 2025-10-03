@@ -1,0 +1,80 @@
+---
+# Combined Heavy CPU, Memory, Network and I/O stress test scenario
+# Usage: kube-burner init -c stress-scenarios/heavy-combined.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-heavy-combined
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: heavy-combined-stress
+    jobIterations: 12
+    qps: 15
+    burst: 15
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: heavy-combined-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Combined CPU+Memory+I/O stress deployments
+      - objectTemplate: templates/stress-high/stress-high-combined-deployment.yml
+        replicas: 4
+        inputVars:
+          cpuRequest: "400m"
+          cpuLimit: "800m"
+          memoryRequest: "512Mi"
+          memoryLimit: "1Gi"
+          ioWorkers: "2"
+          ioSize: "256M"
+          storageSize: "1Gi"
+
+      # Network stress components
+      - objectTemplate: templates/stress-high/stress-high-net-client-deployment.yml
+        replicas: 6
+        inputVars:
+          targetPort: "8080"
+          connections: "30"
+          duration: "600s"
+
+      - objectTemplate: templates/stress-high/stress-high-net-server-deployment.yml
+        replicas: 4
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-high/stress-high-net-service.yml
+        replicas: 4
+
+      # Additional I/O stress deployments
+      - objectTemplate: templates/stress-high/stress-high-io-deployment.yml
+        replicas: 3
+        inputVars:
+          ioType: "mixed"
+          ioSize: "512M"
+          ioWorkers: "3"
+          storageSize: "1Gi"
+
+      # PersistentVolumeClaims
+      - objectTemplate: templates/stress-high/stress-high-io-pvc.yml
+        replicas: 15
+
+      # Network policies
+      - objectTemplate: templates/stress-high/stress-high-network-policy.yml
+        replicas: 3
+
+      # Heavy load of ConfigMaps and Secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 40
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 40

@@ -1,0 +1,23 @@
+---
+# Configuration for basic test without additional load
+# Usage: kube-burner init -c kubelet-density-light.yml
+global:
+  gc: true  # Enable automatic garbage collection
+  clusterHealth: true  # Verify cluster health
+  measurements:
+   - name: podLatency  # Measure pod creation latency
+jobs:
+  - name: kubelet-density-light
+    jobIterations: 10  # Reduced for light test
+    qps: 1             # 1 request per second (very conservative)
+    burst: 1           # No bursts
+    preLoadImages: false
+    namespacedIterations: false
+    namespace: kubelet-density-light
+    waitWhenFinished: true
+    podWait: false
+    objects:
+      - objectTemplate: templates/basic/basic-pod.yml
+        replicas: 1      # Only 1 replica per iteration
+        inputVars:
+          containerImage: registry.k8s.io/pause:3.1  # Minimal image

@@ -1,0 +1,56 @@
+---
+# Heavy Network stress test scenario
+# Usage: kube-burner init -c stress-scenarios/heavy-net.yml
+metricsEndpoints:
+  - indexer:
+      metricsDirectory: kube-burner-heavy-net
+      type: local
+
+global:
+  gc: true
+  clusterHealth: true
+  measurements:
+    - name: podLatency
+    - name: containerMetrics
+    - name: nodeMetrics
+
+jobs:
+  - name: heavy-net-stress
+    jobIterations: 20
+    qps: 25
+    burst: 25
+    preLoadImages: false  # Skip image preload phase
+    namespacedIterations: true
+    namespace: heavy-net-stress
+    podWait: false
+    waitWhenFinished: true
+    objects:
+
+      # Network stress client pods
+      - objectTemplate: templates/stress-high/stress-high-net-client-deployment.yml
+        replicas: 10
+        inputVars:
+          targetPort: "8080"
+          connections: "50"
+          duration: "600s"
+
+      # Network stress server pods
+      - objectTemplate: templates/stress-high/stress-high-net-server-deployment.yml
+        replicas: 8
+        inputVars:
+          serverPort: "8080"
+
+      # Services for network communication
+      - objectTemplate: templates/stress-high/stress-high-net-service.yml
+        replicas: 8
+
+      # Network policies for testing
+      - objectTemplate: templates/stress-high/stress-high-network-policy.yml
+        replicas: 5
+
+      # ConfigMaps and secrets
+      - objectTemplate: templates/basic/basic-configmap.yml
+        replicas: 25
+
+      - objectTemplate: templates/basic/basic-secret.yml
+        replicas: 25
